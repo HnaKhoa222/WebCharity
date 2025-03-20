@@ -1,0 +1,30 @@
+.navbar {
+    background: #DEC0C0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .logo {
+    font-size: 35px;
+    font-weight: bold;
+    color: #ED1651;
+    background: linear-gradient(45deg, #ED1651, #ff6384);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .nav-links a {
+    font-size: 25px;
+    margin: 0 20px;
+    color: #374151;
+    text-decoration: none;
+  }
+  
+  .nav-links a:hover {
+    color: #ED1651;
+  }
+
+
