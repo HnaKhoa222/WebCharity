@@ -1,8 +1,10 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { auth } from './firebase';
+import AuthPage from './components/AuthPage/AuthPage';
 import Home from "./pages/Home";
 import Projects from "./pages/Projects";
-import Verify from "./pages/Verify";
+import Create from "./pages/Create";
 import Guide from "./pages/Guide";
 import Navbar from "./components/Navbar/Navbar";
 import Footer from "./components/Footer/Footer";
@@ -14,8 +16,9 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/projects" element={<Projects />} />
-        <Route path="/verify" element={<Verify />} />
+        <Route path="/create" element={<Create />} />
         <Route path="/guide" element={<Guide />} />
+        <Route path="/auth" element={<AuthPage />} />
       </Routes>
       <Footer />
     </BrowserRouter>

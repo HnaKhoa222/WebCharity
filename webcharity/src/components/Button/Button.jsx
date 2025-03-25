@@ -1,10 +1,13 @@
-import React from "react";
-import "./Button.css";
+import React from 'react';
+import './Button.css';
 
-const Button = ({ text, onClick, variant = "primary", className }) => {
+const Button = ({ text, onClick, variant = 'primary', className = '' }) => {
+  // Kết hợp class cơ bản với variant và className tùy chỉnh
+  const buttonClass = `custom-button custom-button--${variant} ${className}`;
+
   return (
-    <button className={`custom-button ${className}`} onClick={onClick}>
-      {text}
+    <button className={buttonClass} onClick={onClick}>
+      <span className="button-text">{text}</span>
     </button>
   );
 };
