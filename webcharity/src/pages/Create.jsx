@@ -1,3 +1,3 @@
 import React from "react";
-const VerifyPage = () => <h2>Trang Xác minh</h2>;
+const VerifyPage = () => <h2>Trang Tạo</h2>;
 export default VerifyPage;

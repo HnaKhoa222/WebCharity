@@ -1,5 +1,6 @@
 import React from "react";
 import "./Footer.css"; // Import file CSS riêng
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -9,10 +10,10 @@ const Footer = () => {
           <h2>HopeHouse</h2>
         </div>
         <div className="footer-links">
-          <a href="#">Trang chủ</a>
-          <a href="#">Dự án</a>
-          <a href="#">Xác thực</a>
-          <a href="#">Hướng dẫn</a>
+          <Link to="/">Trang chủ</Link>
+          <Link to="/projects">Các dự án</Link>
+          <Link to="/create">Tạo dự án</Link>
+          <Link to="/guide">Hướng dẫn</Link>
         </div>
         <div className="footer-contact">
           <p>Email: support@nhom3.vn</p>
