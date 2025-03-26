@@ -283,6 +283,7 @@
 }
 
 .hero-content h1 {
+  color: white; 
   font-size: 3rem; /* Kích thước tiêu đề lớn */
   margin-bottom: 20px;
   font-weight: bold;
