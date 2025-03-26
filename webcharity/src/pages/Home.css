@@ -252,7 +252,7 @@
 /* HeroSection.css */
 .hero-section {
   height: 100vh; /* Chiều cao toàn màn hình */
-  background-image: url('D:\namky42\nt208\project\webcharity\src\components\Assets\hero.jpg'); /* Thay bằng đường dẫn hình ảnh thực tế */
+  background-image: url('../components/Assets/hero.jpg'); /* Thay bằng đường dẫn hình ảnh thực tế */
   background-size: cover; /* Hình nền phủ toàn bộ */
   background-position: center; /* Căn giữa hình nền */
   display: flex; /* Sử dụng flexbox để căn giữa nội dung */
