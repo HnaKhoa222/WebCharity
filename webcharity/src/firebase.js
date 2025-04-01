@@ -1,7 +1,9 @@
 // src/firebase.js
-import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
-import { getAuth } from 'firebase/auth'; // Thêm Authentication
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getAuth } from "firebase/auth"; // Thêm Authentication
+
+import { getFirestore, collection, getDocs, addDoc } from "firebase/firestore";
 
 // Firebase configuration từ bạn cung cấp
 const firebaseConfig = {
@@ -19,4 +21,6 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app); // Analytics (tùy chọn)
 const auth = getAuth(app); // Authentication
 
-export { app, analytics, auth }; // Export để dùng ở các file khác
+const db = getFirestore(app);
+
+export { app, analytics, auth, db, collection, getDocs, addDoc }; // Export để dùng ở các file khác
