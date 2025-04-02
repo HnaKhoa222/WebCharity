@@ -1,0 +1,73 @@
+.vietqr-payment {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .vietqr-payment h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .vietqr-payment label {
+    font-size: 16px;
+    margin-right: 10px;
+  }
+  
+  .vietqr-payment select,
+  .vietqr-payment input {
+    padding: 8px;
+    font-size: 16px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .custom-amount {
+    display: block;
+    width: 200px;
+    margin: 10px auto;
+  }
+  
+  .vietqr-payment button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .vietqr-payment button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .vietqr-payment button:hover:not(:disabled) {
+    background-color: #0056b3;
+  }
+  
+  .error {
+    color: red;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  
+  .qr-code {
+    margin-top: 20px;
+  }
+  
+  .qr-code img {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  .qr-code p {
+    font-size: 14px;
+    color: #666;
+    margin-top: 10px;
+  }
