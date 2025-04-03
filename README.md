@@ -21,7 +21,7 @@ _Đây là một hệ thống quản lý vốn từ thiện giúp theo dõi, qu�
 ## Cài đặt và chạy dự án
 ### Clone repository này về máy:
 ```sh
-git clone https://github.com/DatTranDev/QuanLiNhaSach-UIT.git
+git clone https://github.com/HnaKhoa222/WebCharity.git
 ```
 
 ### Khởi động trang web:
