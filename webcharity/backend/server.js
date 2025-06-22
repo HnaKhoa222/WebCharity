@@ -1,11 +1,9 @@
 const express = require('express');
-const axios = require('axios');
-const admin = require('firebase-admin');
 const cors = require('cors');
-const app = express();
-const port = 5000;
+const admin = require('firebase-admin');
 
-app.use(cors()); 
+const app = express();
+app.use(cors());
 app.use(express.json());
 
 const serviceAccount = require('./serviceAccountKey.json');
@@ -14,132 +12,164 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-const vietQRConfig = {
-  bankCode: 'VCB',
-  accountNumber: '1019249370',
-  accountName: 'HUYNH NGUYEN ANH KHOA',
-};
+// Search and filter projects
+app.get('/api/projects/search', async (req, res) => {
+  try {
+    const { 
+      searchTerm, 
+      sortBy = 'newest',
+      limit = 20,
+      page = 1 
+    } = req.query;
 
-async function generateVietQR(amount, projectId) {
-  const qrData = `https://img.vietqr.io/image/${vietQRConfig.bankCode}-${vietQRConfig.accountNumber}-compact.png?amount=${amount}&addInfo=${encodeURIComponent('Ung ho Quy Nhom 3')}`;
+    let query = db.collection('projects');
 
-  const transactionRef = db.collection('transactions').doc();
-  const transactionData = {
-    amount,
-    projectId,
-    qrCodeUrl: qrData,
-    status: 'pending',
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    donorName: 'Anonymous', 
-  };
+    // Apply sorting
+    switch (sortBy) {
+      case 'newest':
+        query = query.orderBy('createdAt', 'desc');
+        break;
+      case 'popular':
+        query = query.orderBy('supporters', 'desc');
+        break;
+      case 'deadline':
+        query = query.orderBy('deadline', 'asc');
+        break;
+      case 'amount':
+        query = query.orderBy('raisedAmount', 'desc');
+        break;
+      default:
+        query = query.orderBy('createdAt', 'desc');
+    }
 
-  await transactionRef.set(transactionData);
+    // Apply pagination
+    const offset = (page - 1) * limit;
+    query = query.limit(parseInt(limit)).offset(offset);
 
-  const projectRef = db.collection('projects').doc(projectId);
-  const projectDoc = await projectRef.get();
-  
-  if (projectDoc.exists()) {
-    const projectData = projectDoc.data();
-    const currentAmount = parseInt(projectData.raisedAmount.replace(/[^0-9]/g, ''));
-    const newAmount = currentAmount + amount;
-    const fundingGoal = parseInt(projectData.fundingGoal.replace(/[^0-9]/g, ''));
-    const raisedPercent = `${Math.round((newAmount / fundingGoal) * 100)}%`;
+    const querySnapshot = await query.get();
+    let projects = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-    await projectRef.update({
-      raisedAmount: `${newAmount.toLocaleString()} VNĐ`,
-      raisedPercent: raisedPercent,
-      transactions: admin.firestore.FieldValue.arrayUnion({
-        donorName: 'Anonymous',
-        amount: `${amount.toLocaleString()} VNĐ`,
-        date: new Date().toLocaleDateString('vi-VN'),
-        transactionId: transactionRef.id
-      })
+    // Apply search filter if searchTerm is provided
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
+      projects = projects.filter(project => {
+        return (
+          (project.title && project.title.toLowerCase().includes(term)) ||
+          (project.fundName && project.fundName.toLowerCase().includes(term)) ||
+          (project.description && project.description.toLowerCase().includes(term)) ||
+          (project.category && project.category.toLowerCase().includes(term)) ||
+          (project.location && project.location.toLowerCase().includes(term))
+        );
+      });
+    }
+
+    // Get total count for pagination
+    const totalQuery = db.collection('projects');
+    const totalSnapshot = await totalQuery.get();
+    const total = totalSnapshot.size;
+
+    res.json({
+      projects,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      }
     });
+
+  } catch (error) {
+    console.error('Error searching projects:', error);
+    res.status(500).json({ error: 'Failed to search projects' });
   }
+});
 
-  return { 
-    qrCodeUrl: qrData, 
-    transactionId: transactionRef.id,
-    message: 'Đã tạo mã QR và cập nhật thông tin dự án'
-  };
-}
-
-async function checkTransactionStatus(transactionId) {
-  const transactionRef = db.collection('transactions').doc(transactionId);
-  const transactionDoc = await transactionRef.get();
-
-  if (!transactionDoc.exists()) {
-    throw new Error('Không tìm thấy giao dịch');
-  }
-
-  const transactionData = transactionDoc.data();
+// Verify transaction on blockchain
+app.post('/verify-transaction', async (req, res) => {
+  const { transactionHash, projectId } = req.body;
   
-  if (transactionData.status === 'completed') {
-    return { status: 'completed', message: 'Giao dịch đã hoàn thành' };
-  }
-
-  const isCompleted = Math.random() > 0.5;
-
-  if (isCompleted) {
-    const { projectId, amount } = transactionData;
+  try {
+    // Connect to Ethereum network (using Infura or other provider)
+    const provider = new ethers.providers.JsonRpcProvider(process.env.ETHEREUM_RPC_URL);
     
-    await transactionRef.update({
-      status: 'completed',
-      completedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
+    // Get transaction receipt
+    const receipt = await provider.getTransactionReceipt(transactionHash);
+    
+    if (!receipt) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    if (receipt.status === 0) {
+      return res.status(400).json({ error: 'Transaction failed' });
+    }
+    
+    // Get transaction details
+    const tx = await provider.getTransaction(transactionHash);
+    
+    // Update project in Firestore
     const projectRef = db.collection('projects').doc(projectId);
     const projectDoc = await projectRef.get();
     
     if (projectDoc.exists()) {
       const projectData = projectDoc.data();
-      const currentAmount = parseInt(projectData.raisedAmount.replace(/[^0-9]/g, ''));
-      const newAmount = currentAmount + amount;
-      const fundingGoal = parseInt(projectData.fundingGoal.replace(/[^0-9]/g, ''));
-      const raisedPercent = `${Math.round((newAmount / fundingGoal) * 100)}%`;
-
+      const amountInEth = ethers.utils.formatEther(tx.value);
+      
+      // Update project with transaction details
       await projectRef.update({
-        raisedAmount: `${newAmount.toLocaleString()} VNĐ`,
-        raisedPercent: raisedPercent,
         transactions: admin.firestore.FieldValue.arrayUnion({
-          donorName: 'Anonymous',
-          amount: `${amount.toLocaleString()} VNĐ`,
+          donorName: tx.from.substring(0, 6) + '...' + tx.from.substring(tx.from.length - 4),
+          amount: `${amountInEth} ETH`,
           date: new Date().toLocaleDateString('vi-VN'),
-          transactionId: transactionId
+          transactionHash: transactionHash,
+          status: 'completed'
         })
       });
+      
+      return res.json({ 
+        status: 'success', 
+        message: 'Transaction verified and recorded',
+        transaction: {
+          hash: transactionHash,
+          from: tx.from,
+          to: tx.to,
+          value: amountInEth,
+          status: 'completed'
+        }
+      });
+    } else {
+      return res.status(404).json({ error: 'Project not found' });
     }
-
-    return { status: 'completed', message: 'Giao dịch đã hoàn thành' };
-  }
-
-  return { status: 'pending', message: 'Đang chờ xác nhận giao dịch' };
-}
-
-app.post('/generate-vietqr', async (req, res) => {
-  const { amount, projectId } = req.body;
-
-  try {
-    const result = await generateVietQR(amount, projectId);
-    res.json(result);
   } catch (error) {
-    console.error('Lỗi khi tạo VietQR:', error);
-    res.status(500).json({ error: 'Không thể tạo mã VietQR' });
+    console.error('Error verifying transaction:', error);
+    return res.status(500).json({ error: 'Failed to verify transaction' });
   }
 });
 
-app.get('/check-transaction/:transactionId', async (req, res) => {
-  const { transactionId } = req.params;
-
+// Get transaction history for a project
+app.get('/project-transactions/:projectId', async (req, res) => {
+  const { projectId } = req.params;
+  
   try {
-    const result = await checkTransactionStatus(transactionId);
-    res.json(result);
+    const projectRef = db.collection('projects').doc(projectId);
+    const projectDoc = await projectRef.get();
+    
+    if (projectDoc.exists()) {
+      const projectData = projectDoc.data();
+      return res.json({ 
+        transactions: projectData.transactions || [] 
+      });
+    } else {
+      return res.status(404).json({ error: 'Project not found' });
+    }
   } catch (error) {
-    console.error('Lỗi khi kiểm tra trạng thái giao dịch:', error);
-    res.status(500).json({ error: 'Không thể kiểm tra trạng thái giao dịch' });
+    console.error('Error fetching transactions:', error);
+    return res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server chạy tại http://localhost:${port}`);
+app.listen(5000, () => {
+  console.log('Server is running on port 5000');
 });
