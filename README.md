@@ -2,9 +2,7 @@
 
 ## Thành viên nhóm:
 - **Huỳnh Nguyễn Anh Khoa** - 21522221  
-- **Nguyễn Hữu Thắng** - 22521334  
-- **Cao Tài** - 23521368  
-- **Đòng Tài Đức** - 22520265  
+- **Đồng Tài Đức** - 22520265  
 - **Đặng Bảo Sơn** - 22521247  
 
 ## Giảng viên hướng dẫn:
@@ -15,7 +13,7 @@ _Đây là một hệ thống quản lý vốn từ thiện giúp theo dõi, qu�
 
 ## Công nghệ sử dụng:
 - **Design UI/UX:** ReactJS
-- **Backend:** ExpressJS
+- **Backend:** Nodejs
 - **Database:** Firebase
 
 ## Cài đặt và chạy dự án
@@ -25,15 +23,11 @@ git clone https://github.com/HnaKhoa222/WebCharity.git
 ```
 
 ### Khởi động trang web:
-1. Di chuyển vào thư mục `frontend`:
-```sh
-cd frontend
-```
-2. Cài đặt dependencies:
+1. Cài đặt dependencies:
 ```sh
 npm install
 ```
-3. Chạy ứng dụng:
+2. Chạy ứng dụng ở thực mục frontend và backend :
 ```sh
 npm start
 ```
