@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useInterest } from "../../contexts/InterestContext";
 import "./Navbar.css";
+import logo from "../Assets/logo.png";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -41,8 +42,7 @@ const Navbar = () => {
     <nav className={`navbar ${isScrolled ? "scrolled" : ""}`}>
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
-          <img src="/logo192.png" alt="Logo" />
-          <span>WebCharity</span>
+          <img src={logo} alt="Logo" />
         </Link>
 
         <div className={`navbar-menu ${isMenuOpen ? "active" : ""}`}>
