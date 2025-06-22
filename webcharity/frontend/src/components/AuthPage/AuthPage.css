@@ -3,62 +3,194 @@
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: #f9f9f9;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 20px;
   }
   
   .auth-container {
-    background: #fff;
-    padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: white;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
+  }
+  
+  .auth-header {
     text-align: center;
+    margin-bottom: 2rem;
   }
   
-  .auth-container h2 {
-    margin-bottom: 20px;
-    color: #2c3e50;
+  .auth-header h1 {
+    color: #2d3748;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
   }
   
-  .auth-container input {
-    display: block;
+  .auth-subtitle {
+    color: #718096;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  
+  .social-login {
+    margin-bottom: 1.5rem;
+  }
+  
+  .google-login-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
-  }
-  
-  .auth-container button {
-    width: 100%;
-    padding: 12px;
-    background: linear-gradient(45deg, #ff6b6b, #e74c3c);
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    font-size: 16px;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: white;
+    color: #2d3748;
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
-    margin-top: 10px;
+    transition: all 0.2s ease;
   }
   
-  .auth-container button:hover {
-    background: linear-gradient(45deg, #e74c3c, #ff6b6b);
+  .google-login-btn:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e0;
+  }
+  
+  .google-login-btn img {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+  }
+  
+  .google-login-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+  }
+  
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .divider span {
+    padding: 0 1rem;
+    color: #718096;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  .auth-form {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #2d3748;
+    transition: all 0.2s ease;
+  }
+  
+  .form-group input:focus {
+    outline: none;
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+  }
+  
+  .form-group input::placeholder {
+    color: #a0aec0;
   }
   
   .error {
-    color: red;
-    font-size: 14px;
-    margin: 10px 0;
+    color: #e53e3e;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    padding: 0.75rem;
+    background-color: #fff5f5;
+    border-radius: 8px;
+    border: 1px solid #fed7d7;
   }
   
-  .toggle-link {
-    color: #e74c3c;
+  .submit-button {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #4299e1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
-    font-weight: 600;
+    transition: all 0.2s ease;
   }
   
-  .toggle-link:hover {
+  .submit-button:hover {
+    background-color: #3182ce;
+  }
+  
+  .submit-button:disabled {
+    background-color: #a0aec0;
+    cursor: not-allowed;
+  }
+  
+  .toggle-text {
+    text-align: center;
+    color: #718096;
+    font-size: 0.9rem;
+  }
+  
+  .toggle-button {
+    background: none;
+    border: none;
+    color: #4299e1;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 0.25rem;
+    transition: color 0.2s ease;
+  }
+  
+  .toggle-button:hover {
+    color: #3182ce;
     text-decoration: underline;
+  }
+  
+  @media (max-width: 480px) {
+    .auth-container {
+      padding: 1.5rem;
+    }
+  
+    .auth-header h1 {
+      font-size: 1.5rem;
+    }
+  
+    .auth-subtitle {
+      font-size: 0.9rem;
+    }
   }

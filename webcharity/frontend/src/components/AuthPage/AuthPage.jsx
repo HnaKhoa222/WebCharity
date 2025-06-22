@@ -1,34 +1,37 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../../firebase'; // Đảm bảo đã cấu hình firebase.js
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebase'; 
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import Button from '../Button/Button';
 import './AuthPage.css';
 
 const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(true); // Chuyển đổi giữa đăng nhập và đăng ký
+  const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
-    role: 'donor', // Mặc định là donor
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Xử lý thay đổi input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Xử lý đăng ký
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
-      // Đăng ký với Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -36,38 +39,88 @@ const AuthPage = () => {
       );
       const user = userCredential.user;
 
-      // Thêm thông tin người dùng vào Firestore
       await setDoc(doc(db, 'users', user.uid), {
         username: formData.username,
         email: formData.email,
-        role: user,
         created_at: new Date().toISOString(),
       });
-      setFormData({ username: '', email: '', password: '', role: 'donor' });
-      setIsLogin(true); // Chuyển về chế độ đăng nhập sau khi đăng ký
+      setFormData({ username: '', email: '', password: '' });
+      setIsLogin(true);
     } catch (error) {
       setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Xử lý đăng nhập
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
       await signInWithEmailAndPassword(auth, formData.email, formData.password);
       navigate('/');
     } catch (error) {
       setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, 'users', user.uid), {
+          username: user.displayName || '',
+          email: user.email,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      navigate('/');
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <h1>{isLogin ? 'Đăng nhập' : 'Đăng ký'}</h1>
-        <form onSubmit={isLogin ? handleLogin : handleRegister}>
+        <div className="auth-header">
+          <h1>{isLogin ? 'Chào mừng trở lại!' : 'Tạo tài khoản mới'}</h1>
+          <p className="auth-subtitle">
+            {isLogin 
+              ? 'Đăng nhập để tiếp tục quyên góp cho các dự án' 
+              : 'Đăng ký để bắt đầu quyên góp cho các dự án'}
+          </p>
+        </div>
+        
+        <div className="social-login">
+          <button 
+            className="google-login-btn"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+          >
+            <img src="/google-icon.svg" alt="Google" />
+            {isLogin ? 'Đăng nhập với Google' : 'Đăng ký với Google'}
+          </button>
+        </div>
+
+        <div className="divider">
+          <span>hoặc</span>
+        </div>
+
+        <form onSubmit={isLogin ? handleLogin : handleRegister} className="auth-form">
           {!isLogin && (
             <div className="form-group">
               <label htmlFor="username">Tên người dùng</label>
@@ -77,7 +130,7 @@ const AuthPage = () => {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                placeholder="Nhập tên người dùng"
+                placeholder="Nhập tên của bạn"
                 required={!isLogin}
               />
             </div>
@@ -90,7 +143,7 @@ const AuthPage = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Nhập email"
+              placeholder="Nhập email của bạn"
               required
             />
           </div>
@@ -106,33 +159,23 @@ const AuthPage = () => {
               required
             />
           </div>
-          {!isLogin && (
-            <div className="form-group">
-              <label htmlFor="role">Vai trò</label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="donor">Người quyên góp</option>
-                <option value="creator">Người tạo dự án</option>
-                <option value="admin">Quản trị viên</option>
-              </select>
-            </div>
-          )}
           {error && <p className="error">{error}</p>}
           <Button
             text={isLogin ? 'Đăng nhập' : 'Đăng ký'}
             variant="primary"
             type="submit"
+            disabled={loading}
+            className="submit-button"
           />
         </form>
         <p className="toggle-text">
           {isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}
-          <span onClick={() => setIsLogin(!isLogin)}>
+          <button 
+            className="toggle-button"
+            onClick={() => setIsLogin(!isLogin)}
+          >
             {isLogin ? ' Đăng ký ngay' : ' Đăng nhập'}
-          </span>
+          </button>
         </p>
       </div>
     </div>

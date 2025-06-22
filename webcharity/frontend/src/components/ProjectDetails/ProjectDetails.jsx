@@ -9,6 +9,8 @@ const ProjectDetails = () => {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showTransactions, setShowTransactions] = useState(false);
+  const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -17,7 +19,12 @@ const ProjectDetails = () => {
         const projectSnap = await getDoc(projectRef);
 
         if (projectSnap.exists()) {
-          setProject(projectSnap.data());
+          const data = projectSnap.data();
+          setProject(data);
+          // Lấy danh sách giao dịch từ donations
+          if (data.donations) {
+            setTransactions(data.donations);
+          }
         } else {
           console.log('Không tìm thấy dự án!');
         }
@@ -30,6 +37,27 @@ const ProjectDetails = () => {
 
     fetchProject();
   }, [projectId]);
+
+  const toggleTransactions = () => {
+    setShowTransactions(!showTransactions);
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const shortenAddress = (address) => {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
 
   if (loading) return <p className="loading">Đang tải...</p>;
   if (!project) return <p className="error">Không tìm thấy dự án!</p>;
@@ -45,7 +73,7 @@ const ProjectDetails = () => {
       <button 
         className="donate-button" 
         onClick={() => {
-          if (project.projectLink != "none") {
+          if (project.projectLink) {
             window.open(project.projectLink, '_blank');
           } else {
             navigate(`/projects/${projectId}/payment`);
@@ -54,19 +82,58 @@ const ProjectDetails = () => {
       >
         Quyên góp ngay
       </button>
-      <h3 className="project-subtitle">Giao dịch:</h3>
-      {project.transactions && project.transactions.length > 0 ? (
-        <ul className="transaction-list">
-          {project.transactions.map((txn, index) => (
-            <li key={index} className="transaction-item">
-              {txn.donorName} - {txn.amount} - {txn.date}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="no-transactions">Chưa có giao dịch nào.</p>
-      )}
-      
+
+      <div className="transactions-section">
+        <button 
+          className="toggle-transactions-button"
+          onClick={toggleTransactions}
+        >
+          {showTransactions ? 'Ẩn giao dịch' : 'Xem giao dịch'} 
+          <span className={`toggle-icon ${showTransactions ? 'up' : 'down'}`}>▼</span>
+        </button>
+
+        {showTransactions && (
+          <div className="transactions-container">
+            <h3 className="project-subtitle">Danh sách giao dịch:</h3>
+            {transactions && transactions.length > 0 ? (
+              <div className="transaction-list">
+                {transactions.map((tx, index) => (
+                  <div key={index} className="transaction-item">
+                    <div className="transaction-info">
+                      <div className="transaction-details">
+                        <span className="donor-address">
+                          Người quyên góp: {shortenAddress(tx.donorAddress)}
+                        </span>
+                        <span className="transaction-amount">
+                          Số tiền: {tx.amount} ETH
+                        </span>
+                        <span className="transaction-date">
+                          Thời gian: {formatDate(tx.timestamp)}
+                        </span>
+                      </div>
+                      {tx.transactionHash && (
+                        <a 
+                          href={`https://sepolia.etherscan.io/tx/${tx.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="transaction-link"
+                        >
+                          Xem trên Etherscan
+                        </a>
+                      )}
+                      <span className={`transaction-status ${tx.status}`}>
+                        {tx.status === 'completed' ? 'Hoàn thành' : 'Đang xử lý'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-transactions">Chưa có giao dịch nào.</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

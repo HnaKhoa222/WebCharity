@@ -1,130 +1,520 @@
-import React, { useState, useRef } from "react";
-
-import { db, collection, addDoc } from "../firebase";
-
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ethers } from "ethers";
+import { db, auth, storage } from "../firebase";
+import { collection, addDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useAuth } from "../contexts/AuthContext";
 import "./Create.css";
 
 const CreatePage = () => {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
-    name: "",
+    title: "",
     description: "",
-    targetAmount: "",
-    detailsLink: "",
-    statementLink: "",
-    qrCode: "",
-    organizerName: "",
-    email: "",
-    phone: "",
-    website: "",
-    legalInfo: "",
-    donationMethods: [],
-    bankAccount: "",
-    refundPolicy: "",
-    commitment: "",
+    fundingGoal: "",
+    category: "",
+    startDate: "",
+    endDate: "",
+    logo: null,
+    logoPreview: null,
+    creatorName: "",
+    creatorEmail: "",
   });
 
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [submitStatus, setSubmitStatus] = useState(null);
-  const fileInputRef = useRef(null);
+
+  const contractAddress = '0xee3C2a39e2e49176D969A27E05F5e8CA975F14C2';
+  const contractABI = [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_name",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_goal",
+          "type": "uint256"
+        }
+      ],
+      "name": "createProject",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_projectId",
+          "type": "uint256"
+        }
+      ],
+      "name": "donate",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "projectId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "donor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "DonationReceived",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "projectId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "creator",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundsWithdrawn",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "goal",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "creator",
+          "type": "address"
+        }
+      ],
+      "name": "ProjectCreated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_projectId",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "donations",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "donor",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_projectId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getDonations",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "donor",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "timestamp",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct CharityHub.Donation[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_projectId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getProject",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "goal",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "creator",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "totalDonated",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "completed",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct CharityHub.Project",
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "projectCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "projects",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "goal",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "creator",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalDonated",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "completed",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ];
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // Cập nhật form với thông tin người dùng
+            setFormData(prev => ({
+              ...prev,
+              creatorName: userData.username || "",
+              creatorEmail: userData.email || currentUser.email || "",
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [currentUser]);
+
+  const connectWallet = async () => {
+    try {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        setWalletAddress(address);
+      } else {
+        setError("Vui lòng cài đặt MetaMask để tạo dự án");
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      setError("Không thể kết nối ví");
+    }
+  };
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleCheckboxChange = (e) => {
-    const { value, checked } = e.target;
-    setFormData((prevData) => {
-      const donationMethods = checked
-        ? [...prevData.donationMethods, value]
-        : prevData.donationMethods.filter((method) => method !== value);
-      return { ...prevData, donationMethods };
-    });
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData((prevData) => ({
-        ...prevData,
-        qrCode: file.name,
+    const { name, value, files } = e.target;
+    if (name === 'logo' && files && files[0]) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          logo: files[0],
+          logoPreview: reader.result
+        }));
+      };
+      reader.readAsDataURL(files[0]);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
       }));
     }
   };
 
-  const handleButtonClick = () => {
-    fileInputRef.current.click();
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Project submitted for approval:", formData);
+    if (!walletAddress) {
+      setError("Vui lòng kết nối ví MetaMask");
+      return;
+    }
+
+    if (!currentUser) {
+      setError("Vui lòng đăng nhập để tạo dự án");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSubmitStatus(null);
 
     try {
-      // Thêm document vào collection "projects"
-      await addDoc(collection(db, "projects"), {
-        name: formData.name || null,
-        description: formData.description || null,
-        targetAmount: formData.targetAmount || null,
-        detailsLink: formData.detailsLink || null,
-        statementLink: formData.statementLink || null,
-        qrCode: formData.qrCode || null,
-        organizerName: formData.organizerName || null,
-        email: formData.email || null,
-        phone: formData.phone || null,
-        website: formData.website || null,
-        legalInfo: formData.legalInfo || null,
-        donationMethods:
-          formData.donationMethods.length > 0 ? formData.donationMethods : null,
-        bankAccount: formData.bankAccount || null,
-        refundPolicy: formData.refundPolicy || null,
-        commitment: formData.commitment || null,
-        createdAt: new Date(),
-      });
+      // 1. Create project on blockchain
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      
+      const goalInWei = ethers.utils.parseEther(formData.fundingGoal);
+      const tx = await contract.createProject(formData.title, goalInWei);
+      
+      // Đợi transaction được xác nhận
+      const receipt = await tx.wait();
+      
+      // 2. Get project ID from blockchain
+      const projectCount = await contract.projectCount();
+      const blockchainProjectId = projectCount.toNumber() - 1;
 
-      setSubmitStatus(
-        "Đã gửi yêu cầu tạo dự án cho admin. Vui lòng chờ duyệt!"
-      );
-      //   setFormData({
-      //     name: "",
-      //     description: "",
-      //     targetAmount: "",
-      //     detailsLink: "",
-      //     statementLink: "",
-      //     qrCode: "",
-      //     organizerName: "",
-      //     email: "",
-      //     phone: "",
-      //     website: "",
-      //     legalInfo: "",
-      //     donationMethods: [],
-      //     bankAccount: "",
-      //     refundPolicy: "",
-      //     commitment: "",
-      //   });
+      // 3. Create project in Firestore
+      const projectData = {
+        title: formData.title,
+        description: formData.description,
+        fundingGoal: formData.fundingGoal + " ETH",
+        category: formData.category,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        blockchainProjectId,
+        creatorId: currentUser.uid,
+        creatorAddress: walletAddress,
+        creatorName: formData.creatorName || currentUser.displayName || "Người dùng",
+        creatorEmail: formData.creatorEmail || currentUser.email,
+        raisedAmount: "0 ETH",
+        raisedPercent: "0%",
+        status: "active",
+        createdAt: serverTimestamp(),
+        donations: []
+      };
+
+      const docRef = await addDoc(collection(db, "projects"), projectData);
+      
+      setSubmitStatus("Dự án đã được tạo thành công!");
+      navigate(`/projects/${docRef.id}`);
     } catch (error) {
-      console.error("Lỗi khi gửi dự án:", error);
-      setSubmitStatus("Lỗi khi gửi dự án. Vui lòng thử lại!");
+      console.error("Error creating project:", error);
+      setError(`Lỗi khi tạo dự án: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="create-page">
       <h1>Tạo Dự Án Mới</h1>
-      <p>Điền thông tin chi tiết để gửi yêu cầu tạo dự án</p>
+      <p>Điền thông tin chi tiết để tạo dự án quyên góp</p>
+
+      <div className="wallet-section">
+        {!walletAddress ? (
+          <button 
+            className="connect-wallet-button"
+            onClick={connectWallet}
+            disabled={loading}
+          >
+            Kết nối ví
+          </button>
+        ) : (
+          <p className="wallet-address">
+            Ví đã kết nối: {walletAddress.substring(0, 6)}...{walletAddress.substring(walletAddress.length - 4)}
+          </p>
+        )}
+      </div>
 
       <form className="create-form" onSubmit={handleSubmit}>
-        {/* Thông tin cơ bản */}
         <h2>Thông Tin Cơ Bản</h2>
         <div className="form-group">
-          <label htmlFor="name">Tên Dự Án</label>
+          <label htmlFor="title">Tên Dự Án</label>
           <input
             type="text"
-            id="name"
-            name="name"
-            value={formData.name}
+            id="title"
+            name="title"
+            value={formData.title}
             onChange={handleChange}
             placeholder="Nhập tên dự án"
             required
@@ -144,230 +534,93 @@ const CreatePage = () => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="targetAmount">Mục Tiêu Số Tiền (VND)</label>
+          <label htmlFor="fundingGoal">Mục Tiêu Gây Quỹ (ETH)</label>
           <input
-            type="text"
-            id="targetAmount"
-            name="targetAmount"
-            value={formData.targetAmount}
+            type="number"
+            id="fundingGoal"
+            name="fundingGoal"
+            value={formData.fundingGoal}
             onChange={handleChange}
-            placeholder="Ví dụ: 000,000,000 VND"
+            placeholder="Ví dụ: 1.5"
+            min="0.01"
+            step="0.01"
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="detailsLink">Link Chi Tiết</label>
-          <input
-            type="url"
-            id="detailsLink"
-            name="detailsLink"
-            value={formData.detailsLink}
+          <label htmlFor="category">Danh Mục</label>
+          <select
+            id="category"
+            name="category"
+            value={formData.category}
             onChange={handleChange}
-            placeholder="http://example.com/project"
+            required
+          >
+            <option value="">Chọn danh mục</option>
+            <option value="education">Giáo dục</option>
+            <option value="health">Y tế</option>
+            <option value="environment">Môi trường</option>
+            <option value="community">Cộng đồng</option>
+            <option value="other">Khác</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="startDate">Ngày Bắt Đầu</label>
+          <input
+            type="date"
+            id="startDate"
+            name="startDate"
+            value={formData.startDate}
+            onChange={handleChange}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="statementLink">Link Sao Kê</label>
+          <label htmlFor="endDate">Ngày Kết Thúc</label>
           <input
-            type="url"
-            id="statementLink"
-            name="statementLink"
-            value={formData.statementLink}
+            type="date"
+            id="endDate"
+            name="endDate"
+            value={formData.endDate}
             onChange={handleChange}
-            placeholder="http://example.com/statement"
-            required
-          />
-        </div>
-
-        {/* Thông tin người kêu gọi */}
-        <h2>Thông Tin Người Kêu Gọi</h2>
-        <div className="form-group">
-          <label htmlFor="organizerName">
-            Tên Người/Tổ Chức Đứng Ra Kêu Gọi
-          </label>
-          <input
-            type="text"
-            id="organizerName"
-            name="organizerName"
-            value={formData.organizerName}
-            onChange={handleChange}
-            placeholder="Nhập tên cá nhân hoặc tổ chức"
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="email">Email Liên Hệ</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="example@email.com"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="phone">Số Điện Thoại Liên Hệ</label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="Ví dụ: 0901234567"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="website">Website (Nếu Có)</label>
-          <input
-            type="url"
-            id="website"
-            name="website"
-            value={formData.website}
-            onChange={handleChange}
-            placeholder="http://example.com"
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="legalInfo">
-            Thông Tin Pháp Lý (Nếu Là Tổ Chức Phi Lợi Nhuận)
-          </label>
-          <textarea
-            id="legalInfo"
-            name="legalInfo"
-            value={formData.legalInfo}
-            onChange={handleChange}
-            placeholder="Thông tin đăng ký pháp lý, giấy phép..."
-          />
-        </div>
-
-        {/* Phương thức đóng góp */}
-        <h2>Phương Thức Đóng Góp</h2>
-        <div className="form-group">
-          <label>Các Hình Thức Quyên Góp</label>
-          <div className="checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                value="Chuyển khoản"
-                checked={formData.donationMethods.includes("Chuyển khoản")}
-                onChange={handleCheckboxChange}
-              />
-              Chuyển khoản
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                value="Momo"
-                checked={formData.donationMethods.includes("Momo")}
-                onChange={handleCheckboxChange}
-              />
-              Momo
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                value="ZaloPay"
-                checked={formData.donationMethods.includes("ZaloPay")}
-                onChange={handleCheckboxChange}
-              />
-              ZaloPay
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                value="Thẻ tín dụng"
-                checked={formData.donationMethods.includes("Thẻ tín dụng")}
-                onChange={handleCheckboxChange}
-              />
-              Thẻ tín dụng
-            </label>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="bankAccount">
-            Thông Tin Tài Khoản Nhận Quyên Góp
-          </label>
-          <textarea
-            id="bankAccount"
-            name="bankAccount"
-            value={formData.bankAccount}
-            onChange={handleChange}
-            placeholder="Số tài khoản, tên ngân hàng, chi nhánh..."
-            required
-          />
-        </div>
-
-        <div className="form-group qr-group">
-          <label htmlFor="qrCode">Mã QR Thanh Toán</label>
-          <div className="qr-input-group">
-            <input
-              type="text"
-              value={formData.qrCode}
-              placeholder="Chọn file jpg, jpeg, png"
-              readOnly
-            />
+          <label htmlFor="logo">Logo Dự Án</label>
+          <div className="logo-upload-container">
             <input
               type="file"
-              id="qrCode"
-              name="qrCode"
-              accept=".jpg,.jpeg,.png"
-              onChange={handleFileChange}
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              required
+              id="logo"
+              name="logo"
+              accept="image/*"
+              onChange={handleChange}
+              className="logo-input"
             />
-            <button
-              type="button"
-              className="attach-qr-btn"
-              onClick={handleButtonClick}
-            >
-              Chọn File
-            </button>
+            {formData.logoPreview && (
+              <div className="logo-preview">
+                <img src={formData.logoPreview} alt="Logo preview" />
+              </div>
+            )}
           </div>
+          <p className="form-hint">Tải lên logo cho dự án của bạn (khuyến nghị: 500x500px)</p>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="refundPolicy">Chính Sách Hoàn Tiền (Nếu Có)</label>
-          <textarea
-            id="refundPolicy"
-            name="refundPolicy"
-            value={formData.refundPolicy}
-            onChange={handleChange}
-            placeholder="Mô tả chính sách hoàn tiền nếu dự án không đạt mục tiêu..."
-          />
-        </div>
-
-        {/* Cam kết & Minh bạch */}
-        <h2>Cam Kết & Minh Bạch</h2>
-        <div className="form-group">
-          <label htmlFor="commitment">Cam Kết Sử Dụng Quỹ Đúng Mục Đích</label>
-          <textarea
-            id="commitment"
-            name="commitment"
-            value={formData.commitment}
-            onChange={handleChange}
-            placeholder="Lời cam kết về việc sử dụng quỹ"
-            required
-          />
-        </div>
-
-        <button type="submit" className="submit-btn">
-          Gửi Yêu Cầu Tạo Dự Án
+        <button 
+          type="submit" 
+          className="submit-button"
+          disabled={loading || !walletAddress || !currentUser}
+        >
+          {loading ? "Đang tạo..." : "Tạo dự án"}
         </button>
-      </form>
 
-      {submitStatus && <p className="submit-status">{submitStatus}</p>}
+        {error && <p className="error">{error}</p>}
+        {submitStatus && <p className="success">{submitStatus}</p>}
+      </form>
     </div>
   );
 };
