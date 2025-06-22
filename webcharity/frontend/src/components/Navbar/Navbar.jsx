@@ -1,54 +1,96 @@
-import { Link } from "react-router-dom";
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth } from '../../firebase';
-import { signOut } from 'firebase/auth';
-import './Navbar.css'
-import Button from "../Button/Button";
-import AuthPage from "../AuthPage/AuthPage";
-import logo from "../Assets/logo.png"
-
-
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { useInterest } from "../../contexts/InterestContext";
+import "./Navbar.css";
 
 const Navbar = () => {
-  const [user, setUser] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { currentUser, logout } = useAuth();
+  const { getInterestCount } = useInterest();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to log out", error);
+    }
   };
-  return (
-    <div className="navbar">
-      <div className="logo"> <Link to="/"><img src={logo} alt ="logo" className="logo-picture"/></Link></div>
-      <div className="nav-links">
-        <Link to="/">Trang chủ</Link>
-        <Link to="/projects">Các dự án</Link>
-        <Link to="/create">Tạo dự án </Link>
-        <Link to="/guide">Hướng dẫn</Link>
-      </div>
 
-      <div className="user">
-        {user ? (
-          <>
-            <span>Xin chào, {user.email}</span>
-            <Button text="Log Out"onClick={handleLogout}/>
-          </>
-        ) : (
-          <>
-            <Button text="Đăng nhập" onClick={() => navigate('/auth?mode=login')}/>
-            <Button text="Đăng ký" onClick={() => navigate('/auth?mode=signup')}/>
-          </>
-        )}
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
+  return (
+    <nav className={`navbar ${isScrolled ? "scrolled" : ""}`}>
+      <div className="navbar-container">
+        <Link to="/" className="navbar-logo" onClick={closeMenu}>
+          <img src="/logo192.png" alt="Logo" />
+          <span>WebCharity</span>
+        </Link>
+
+        <div className={`navbar-menu ${isMenuOpen ? "active" : ""}`}>
+          <Link to="/" className="nav-link" onClick={closeMenu}>
+            Trang chủ
+          </Link>
+          <Link to="/projects" className="nav-link" onClick={closeMenu}>
+            Dự án
+          </Link>
+          <Link to="/interests" className="nav-link interests-link" onClick={closeMenu}>
+            Quan tâm
+            {getInterestCount() > 0 && (
+              <span className="interest-badge">{getInterestCount()}</span>
+            )}
+          </Link>
+          <Link to="/guide" className="nav-link" onClick={closeMenu}>
+            Hướng dẫn
+          </Link>
+        </div>
+
+        <div className="navbar-auth">
+          {currentUser ? (
+            <div className="user-menu">
+              <span className="user-name">
+                Xin chào, {currentUser.displayName || currentUser.email}
+              </span>
+              <Link to="/create" className="create-btn">
+                Tạo dự án
+              </Link>
+              <button onClick={handleLogout} className="logout-btn">
+                Đăng xuất
+              </button>
+            </div>
+          ) : (
+            <Link to="/auth" className="auth-btn">
+              Đăng nhập
+            </Link>
+          )}
+        </div>
+
+        <div className="hamburger" onClick={toggleMenu}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
       </div>
-    </div>
+    </nav>
   );
 };
 
-export default Navbar
+export default Navbar;

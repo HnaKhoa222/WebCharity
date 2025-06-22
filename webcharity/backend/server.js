@@ -13,6 +13,81 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
+// Search and filter projects
+app.get('/api/projects/search', async (req, res) => {
+  try {
+    const { 
+      searchTerm, 
+      sortBy = 'newest',
+      limit = 20,
+      page = 1 
+    } = req.query;
+
+    let query = db.collection('projects');
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'newest':
+        query = query.orderBy('createdAt', 'desc');
+        break;
+      case 'popular':
+        query = query.orderBy('supporters', 'desc');
+        break;
+      case 'deadline':
+        query = query.orderBy('deadline', 'asc');
+        break;
+      case 'amount':
+        query = query.orderBy('raisedAmount', 'desc');
+        break;
+      default:
+        query = query.orderBy('createdAt', 'desc');
+    }
+
+    // Apply pagination
+    const offset = (page - 1) * limit;
+    query = query.limit(parseInt(limit)).offset(offset);
+
+    const querySnapshot = await query.get();
+    let projects = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Apply search filter if searchTerm is provided
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
+      projects = projects.filter(project => {
+        return (
+          (project.title && project.title.toLowerCase().includes(term)) ||
+          (project.fundName && project.fundName.toLowerCase().includes(term)) ||
+          (project.description && project.description.toLowerCase().includes(term)) ||
+          (project.category && project.category.toLowerCase().includes(term)) ||
+          (project.location && project.location.toLowerCase().includes(term))
+        );
+      });
+    }
+
+    // Get total count for pagination
+    const totalQuery = db.collection('projects');
+    const totalSnapshot = await totalQuery.get();
+    const total = totalSnapshot.size;
+
+    res.json({
+      projects,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error searching projects:', error);
+    res.status(500).json({ error: 'Failed to search projects' });
+  }
+});
+
 // Verify transaction on blockchain
 app.post('/verify-transaction', async (req, res) => {
   const { transactionHash, projectId } = req.body;
